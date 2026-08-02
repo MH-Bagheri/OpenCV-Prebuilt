@@ -1,0 +1,359 @@
+name: Build and Release OpenCV Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      opencv_version:
+        description: 'OpenCV Version (e.g., 4.10.0)'
+        required: true
+        default: '4.10.0'
+
+permissions:
+  contents: write
+
+jobs:
+  # -------------------------------------------------------------------
+  # Debian x64 (Ubuntu)
+  # -------------------------------------------------------------------
+  build-debian-x64:
+    name: Build Debian x64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Build Tools
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cmake unzip pkg-config
+
+      - name: Download and Build OpenCV
+        run: |
+          VERSION="${{ inputs.opencv_version }}"
+          wget https://github.com/opencv/opencv/archive/refs/tags/${VERSION}.zip
+          unzip ${VERSION}.zip
+          mkdir -p opencv-${VERSION}/build
+          cd opencv-${VERSION}/build
+          
+          cmake -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install/opencv \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_opencv_apps=OFF \
+                -DBUILD_EXAMPLES=OFF \
+                -DBUILD_TESTS=OFF \
+                -DBUILD_PERF_TESTS=OFF ..
+          
+          make -j$(nproc)
+          make install
+
+      - name: Compress Binaries
+        run: |
+          cd install
+          tar -czvf opencv-${{ inputs.opencv_version }}-debian-x64.tar.gz opencv
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-debian-x64
+          path: install/opencv-${{ inputs.opencv_version }}-debian-x64.tar.gz
+
+  # -------------------------------------------------------------------
+  # Debian ARM64 (Ubuntu)
+  # -------------------------------------------------------------------
+  build-debian-arm64:
+    name: Build Debian ARM64
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Build Tools
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cmake unzip pkg-config
+
+      - name: Download and Build OpenCV
+        run: |
+          VERSION="${{ inputs.opencv_version }}"
+          wget https://github.com/opencv/opencv/archive/refs/tags/${VERSION}.zip
+          unzip ${VERSION}.zip
+          mkdir -p opencv-${VERSION}/build
+          cd opencv-${VERSION}/build
+          
+          cmake -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install/opencv \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_opencv_apps=OFF \
+                -DBUILD_EXAMPLES=OFF \
+                -DBUILD_TESTS=OFF \
+                -DBUILD_PERF_TESTS=OFF ..
+          
+          make -j$(nproc)
+          make install
+
+      - name: Compress Binaries
+        run: |
+          cd install
+          tar -czvf opencv-${{ inputs.opencv_version }}-debian-arm64.tar.gz opencv
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-debian-arm64
+          path: install/opencv-${{ inputs.opencv_version }}-debian-arm64.tar.gz
+
+  # -------------------------------------------------------------------
+  # Red Hat x64 (AlmaLinux/RHEL Compatible)
+  # -------------------------------------------------------------------
+  build-redhat-x64:
+    name: Build Red Hat x64
+    runs-on: ubuntu-latest
+    container: almalinux:9
+    steps:
+      - name: Install Prerequisites
+        run: dnf install -y git
+        
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Build Tools
+        run: |
+          dnf update -y
+          dnf install -y gcc gcc-c++ cmake make unzip wget pkgconf-pkg-config tar
+
+      - name: Download and Build OpenCV
+        run: |
+          VERSION="${{ inputs.opencv_version }}"
+          wget https://github.com/opencv/opencv/archive/refs/tags/${VERSION}.zip
+          unzip ${VERSION}.zip
+          mkdir -p opencv-${VERSION}/build
+          cd opencv-${VERSION}/build
+          
+          cmake -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install/opencv \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_opencv_apps=OFF \
+                -DBUILD_EXAMPLES=OFF \
+                -DBUILD_TESTS=OFF \
+                -DBUILD_PERF_TESTS=OFF ..
+          
+          make -j$(nproc)
+          make install
+
+      - name: Compress Binaries
+        run: |
+          cd install
+          tar -czvf opencv-${{ inputs.opencv_version }}-redhat-x64.tar.gz opencv
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-redhat-x64
+          path: install/opencv-${{ inputs.opencv_version }}-redhat-x64.tar.gz
+
+  # -------------------------------------------------------------------
+  # Red Hat ARM64 (AlmaLinux/RHEL Compatible)
+  # -------------------------------------------------------------------
+  build-redhat-arm64:
+    name: Build Red Hat ARM64
+    runs-on: ubuntu-24.04-arm
+    container: almalinux:9
+    steps:
+      - name: Install Prerequisites
+        run: dnf install -y git
+        
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Build Tools
+        run: |
+          dnf update -y
+          dnf install -y gcc gcc-c++ cmake make unzip wget pkgconf-pkg-config tar
+
+      - name: Download and Build OpenCV
+        run: |
+          VERSION="${{ inputs.opencv_version }}"
+          wget https://github.com/opencv/opencv/archive/refs/tags/${VERSION}.zip
+          unzip ${VERSION}.zip
+          mkdir -p opencv-${VERSION}/build
+          cd opencv-${VERSION}/build
+          
+          cmake -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install/opencv \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_opencv_apps=OFF \
+                -DBUILD_EXAMPLES=OFF \
+                -DBUILD_TESTS=OFF \
+                -DBUILD_PERF_TESTS=OFF ..
+          
+          make -j$(nproc)
+          make install
+
+      - name: Compress Binaries
+        run: |
+          cd install
+          tar -czvf opencv-${{ inputs.opencv_version }}-redhat-arm64.tar.gz opencv
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-redhat-arm64
+          path: install/opencv-${{ inputs.opencv_version }}-redhat-arm64.tar.gz
+
+  # -------------------------------------------------------------------
+  # Windows x64
+  # -------------------------------------------------------------------
+  build-windows-x64:
+    name: Build Windows x64
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download and Build OpenCV
+        shell: pwsh
+        run: |
+          $VERSION = "${{ inputs.opencv_version }}"
+          $ProgressPreference = 'SilentlyContinue'
+          
+          Invoke-WebRequest -Uri "https://github.com/opencv/opencv/archive/refs/tags/$VERSION.zip" -OutFile "opencv.zip"
+          Expand-Archive -Path "opencv.zip" -DestinationPath "."
+          New-Item -ItemType Directory -Force -Path "opencv-$VERSION/build"
+          cd "opencv-$VERSION/build"
+          
+          $installPath = "${{ github.workspace }}/install/opencv"
+          cmake -G "Visual Studio 17 2022" -A x64 `
+                -DCMAKE_INSTALL_PREFIX="$installPath" `
+                -DCMAKE_BUILD_TYPE=Release `
+                -DBUILD_opencv_apps=OFF `
+                -DBUILD_EXAMPLES=OFF `
+                -DBUILD_TESTS=OFF `
+                -DBUILD_PERF_TESTS=OFF ..
+          
+          cmake --build . --config Release --target INSTALL -j 4
+
+      - name: Compress Binaries
+        shell: pwsh
+        run: |
+          cd install
+          Compress-Archive -Path "opencv" -DestinationPath "opencv-${{ inputs.opencv_version }}-windows-x64.zip"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-windows-x64
+          path: install/opencv-${{ inputs.opencv_version }}-windows-x64.zip
+
+  # -------------------------------------------------------------------
+  # Windows ARM64
+  # -------------------------------------------------------------------
+  build-windows-arm64:
+    name: Build Windows ARM64
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup vcpkg and Install OpenCV (ARM64)
+        shell: pwsh
+        run: |
+          $VERSION = "${{ inputs.opencv_version }}"
+          New-Item -ItemType Directory -Force -Path "vcpkg_dir"
+          cd vcpkg_dir
+          
+          git clone --depth 1 https://github.com/microsoft/vcpkg.git
+          .\vcpkg\bootstrap-vcpkg.bat
+          
+          .\vcpkg\vcpkg.exe install opencv4:arm64-windows --recurse
+          
+          # Stage files for packaging
+          $outPath = "${{ github.workspace }}/install/opencv"
+          New-Item -ItemType Directory -Force -Path $outPath
+          Copy-Item -Path "vcpkg\packages\opencv4_arm64-windows\*" -Destination $outPath -Recurse
+
+      - name: Compress Binaries
+        shell: pwsh
+        run: |
+          cd install
+          Compress-Archive -Path "opencv" -DestinationPath "opencv-${{ inputs.opencv_version }}-windows-arm64.zip"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-windows-arm64
+          path: install/opencv-${{ inputs.opencv_version }}-windows-arm64.zip
+
+  # -------------------------------------------------------------------
+  # macOS ARM64
+  # -------------------------------------------------------------------
+  build-macos-arm64:
+    name: Build macOS ARM64
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download and Build OpenCV
+        run: |
+          VERSION="${{ inputs.opencv_version }}"
+          curl -LO https://github.com/opencv/opencv/archive/refs/tags/${VERSION}.zip
+          unzip ${VERSION}.zip
+          mkdir -p opencv-${VERSION}/build
+          cd opencv-${VERSION}/build
+          
+          cmake -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/install/opencv \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DBUILD_opencv_apps=OFF \
+                -DBUILD_EXAMPLES=OFF \
+                -DBUILD_TESTS=OFF \
+                -DBUILD_PERF_TESTS=OFF ..
+          
+          make -j$(sysctl -n hw.ncpu)
+          make install
+
+      - name: Compress Binaries
+        run: |
+          cd install
+          tar -czvf opencv-${{ inputs.opencv_version }}-macos-arm64.tar.gz opencv
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-macos-arm64
+          path: install/opencv-${{ inputs.opencv_version }}-macos-arm64.tar.gz
+
+  # -------------------------------------------------------------------
+  # Release Creation
+  # -------------------------------------------------------------------
+  release:
+    name: Create GitHub Release
+    needs: [build-debian-x64, build-debian-arm64, build-redhat-x64, build-redhat-arm64, build-windows-x64, build-windows-arm64, build-macos-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.opencv_version }}
+          name: OpenCV Prebuilt Binaries v${{ inputs.opencv_version }}
+          body: |
+            Precompiled OpenCV binaries for:
+            - `opencv-${{ inputs.opencv_version }}-debian-x64.tar.gz`
+            - `opencv-${{ inputs.opencv_version }}-debian-arm64.tar.gz`
+            - `opencv-${{ inputs.opencv_version }}-redhat-x64.tar.gz`
+            - `opencv-${{ inputs.opencv_version }}-redhat-arm64.tar.gz`
+            - `opencv-${{ inputs.opencv_version }}-windows-x64.zip`
+            - `opencv-${{ inputs.opencv_version }}-windows-arm64.zip`
+            - `opencv-${{ inputs.opencv_version }}-macos-arm64.tar.gz`
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/opencv-debian-x64/*.tar.gz
+            artifacts/opencv-debian-arm64/*.tar.gz
+            artifacts/opencv-redhat-x64/*.tar.gz
+            artifacts/opencv-redhat-arm64/*.tar.gz
+            artifacts/opencv-windows-x64/*.zip
+            artifacts/opencv-windows-arm64/*.zip
+            artifacts/opencv-macos-arm64/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
