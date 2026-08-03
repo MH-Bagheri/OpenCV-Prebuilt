@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Build Tools
         run: |
@@ -51,7 +51,7 @@ jobs:
           tar -czvf opencv-${{ inputs.opencv_version }}-debian-x64.tar.gz opencv
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: opencv-debian-x64
           path: install/opencv-${{ inputs.opencv_version }}-debian-x64.tar.gz
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Build Tools
         run: |
@@ -95,7 +95,7 @@ jobs:
           tar -czvf opencv-${{ inputs.opencv_version }}-debian-arm64.tar.gz opencv
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: opencv-debian-arm64
           path: install/opencv-${{ inputs.opencv_version }}-debian-arm64.tar.gz
@@ -112,7 +112,7 @@ jobs:
         run: dnf install -y git
         
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Build Tools
         run: |
@@ -139,14 +139,14 @@ jobs:
 
       - name: Compress Binaries
         run: |
-          cd install
+          cd ${{ github.workspace }}/install
           tar -czvf opencv-${{ inputs.opencv_version }}-redhat-x64.tar.gz opencv
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: opencv-redhat-x64
-          path: install/opencv-${{ inputs.opencv_version }}-redhat-x64.tar.gz
+          path: ${{ github.workspace }}/install/opencv-${{ inputs.opencv_version }}-redhat-x64.tar.gz
 
   # -------------------------------------------------------------------
   # Red Hat ARM64 (AlmaLinux/RHEL Compatible)
@@ -160,7 +160,7 @@ jobs:
         run: dnf install -y git
         
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Build Tools
         run: |
@@ -187,14 +187,14 @@ jobs:
 
       - name: Compress Binaries
         run: |
-          cd install
+          cd ${{ github.workspace }}/install
           tar -czvf opencv-${{ inputs.opencv_version }}-redhat-arm64.tar.gz opencv
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: opencv-redhat-arm64
-          path: install/opencv-${{ inputs.opencv_version }}-redhat-arm64.tar.gz
+          path: ${{ github.workspace }}/install/opencv-${{ inputs.opencv_version }}-redhat-arm64.tar.gz
 
   # -------------------------------------------------------------------
   # Windows x64
@@ -204,7 +204,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Enable MSVC Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
 
       - name: Download and Build OpenCV
         shell: pwsh
@@ -218,8 +221,7 @@ jobs:
           cd "opencv-$VERSION/build"
           
           $installPath = "${{ github.workspace }}/install/opencv"
-          cmake -G "Visual Studio 17 2022" -A x64 `
-                -DCMAKE_INSTALL_PREFIX="$installPath" `
+          cmake -DCMAKE_INSTALL_PREFIX="$installPath" `
                 -DCMAKE_BUILD_TYPE=Release `
                 -DBUILD_opencv_apps=OFF `
                 -DBUILD_EXAMPLES=OFF `
@@ -235,7 +237,7 @@ jobs:
           Compress-Archive -Path "opencv" -DestinationPath "opencv-${{ inputs.opencv_version }}-windows-x64.zip"
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: opencv-windows-x64
           path: install/opencv-${{ inputs.opencv_version }}-windows-x64.zip
@@ -248,7 +250,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup vcpkg and Install OpenCV (ARM64)
         shell: pwsh
@@ -274,7 +276,7 @@ jobs:
           Compress-Archive -Path "opencv" -DestinationPath "opencv-${{ inputs.opencv_version }}-windows-arm64.zip"
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: opencv-windows-arm64
           path: install/opencv-${{ inputs.opencv_version }}-windows-arm64.zip
@@ -287,7 +289,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download and Build OpenCV
         run: |
@@ -313,7 +315,7 @@ jobs:
           tar -czvf opencv-${{ inputs.opencv_version }}-macos-arm64.tar.gz opencv
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: opencv-macos-arm64
           path: install/opencv-${{ inputs.opencv_version }}-macos-arm64.tar.gz
@@ -327,7 +329,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: artifacts
 
