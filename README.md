@@ -36,11 +36,16 @@ Easily integrate these binaries into your GitHub Actions (or any other CI provid
 - name: Download Prebuilt OpenCV
   run: |
     mkdir -p library && cd library
+    if [ -d "opencv" ]; then rm -rf opencv; fi
     wget https://github.com/mh-bagheri/opencv-prebuilt/releases/download/v4.10.0/opencv-4.10.0-debian-x64.tar.gz
     tar -zxvf opencv-4.10.0-debian-x64.tar.gz
-    mv opencv-4.10.0-debian-x64/opencv ./opencv
-    rm -rf opencv-4.10.0-debian-x64 opencv-4.10.0-debian-x64.tar.gz
-
+    if [ -d "opencv-4.10.0-debian-x64/opencv" ]; then
+        mv opencv-4.10.0-debian-x64/opencv ./opencv
+        rm -rf opencv-4.10.0-debian-x64
+    elif [ -d "opencv-4.10.0-debian-x64" ]; then
+        mv opencv-4.10.0-debian-x64 ./opencv
+    fi
+    rm -f opencv-4.10.0-debian-x64.tar.gz
 ```
 
 *💡 **Note**: For Red Hat or macOS environments, simply swap the URL and folder names with the `redhat-x64.tar.gz` or `macos-arm64.tar.gz` asset respectively.*
@@ -53,12 +58,17 @@ Easily integrate these binaries into your GitHub Actions (or any other CI provid
   run: |
     New-Item -ItemType Directory -Force -Path "library"
     cd library
+    $ProgressPreference = 'SilentlyContinue'
+    if (Test-Path "opencv") { Remove-Item -Path "opencv" -Recurse -Force }
     Invoke-WebRequest -Uri "https://github.com/mh-bagheri/opencv-prebuilt/releases/download/v4.10.0/opencv-4.10.0-windows-x64.zip" -OutFile "opencv.zip"
     Expand-Archive -Path "opencv.zip" -DestinationPath "." -Force
-    Move-Item -Path "opencv-4.10.0-windows-x64\opencv" -Destination "." -Force
-    Remove-Item -Path "opencv-4.10.0-windows-x64" -Recurse -Force
-    Remove-Item -Path "opencv.zip"
-
+    if (Test-Path "opencv-4.10.0-windows-x64\opencv") {
+        Move-Item -Path "opencv-4.10.0-windows-x64\opencv" -Destination "." -Force
+        Remove-Item -Path "opencv-4.10.0-windows-x64" -Recurse -Force
+    } elseif (Test-Path "opencv-4.10.0-windows-x64") {
+        Rename-Item -Path "opencv-4.10.0-windows-x64" -NewName "opencv"
+    }
+    Remove-Item -Path "opencv.zip" -Force
 ```
 
 ---
@@ -83,21 +93,24 @@ target_link_libraries(MyAwesomeApp PRIVATE ${OpenCV_LIBS})
 if(WIN32)
     # Windows dynamic libraries are located in the /bin directory
     file(GLOB_RECURSE OPENCV_RUNTIME_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/library/opencv/bin/*opencv_*.dll")
-elseif(APPLE)
-    # macOS dynamic libraries are located in the /lib directory
-    file(GLOB_RECURSE OPENCV_RUNTIME_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/library/opencv/lib/libopencv*.dylib")
+    if(OPENCV_RUNTIME_LIBS)
+        foreach(OPENCV_LIB ${OPENCV_RUNTIME_LIBS})
+            add_custom_command(TARGET MyAwesomeApp POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${OPENCV_LIB}"
+                $<TARGET_FILE_DIR:MyAwesomeApp>/
+            )
+        endforeach()
+    endif()
 else()
-    # Linux shared objects are located in the /lib directory
-    file(GLOB_RECURSE OPENCV_RUNTIME_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/library/opencv/lib/libopencv*.so*")
-endif()
-
-if(OPENCV_RUNTIME_LIBS)
-    foreach(OPENCV_LIB ${OPENCV_RUNTIME_LIBS})
+    # macOS and Linux dynamic libraries use symlinks in the /lib directory.
+    # We use copy_directory to natively preserve these symlinks instead of globbing.
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/library/opencv/lib")
         add_custom_command(TARGET MyAwesomeApp POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${OPENCV_LIB}"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory 
+            "${CMAKE_CURRENT_SOURCE_DIR}/library/opencv/lib" 
             $<TARGET_FILE_DIR:MyAwesomeApp>/
         )
-    endforeach()
+    endif()
 endif()
 ```
