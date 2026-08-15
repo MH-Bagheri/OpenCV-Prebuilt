@@ -2,7 +2,6 @@
 
 [![GitHub Release](https://img.shields.io/github/v/release/mh-bagheri/opencv-prebuilt?style=flat-square&color=success)](https://github.com/mh-bagheri/opencv-prebuilt/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/mh-bagheri/opencv-prebuilt/build.yml?style=flat-square)](https://github.com/mh-bagheri/opencv-prebuilt/actions)
 
 Pre-compiled Release builds of [OpenCV](https://opencv.org/) designed specifically for standard cross-platform CI (Continuous Integration) pipelines.
 
@@ -36,13 +35,15 @@ Easily integrate these binaries into your GitHub Actions (or any other CI provid
 ```yaml
 - name: Download Prebuilt OpenCV
   run: |
-    mkdir -p library
+    mkdir -p library && cd library
     wget https://github.com/mh-bagheri/opencv-prebuilt/releases/download/v4.10.0/opencv-4.10.0-debian-x64.tar.gz
-    tar -zxvf opencv-4.10.0-debian-x64.tar.gz -C library
-    rm opencv-4.10.0-debian-x64.tar.gz
+    tar -zxvf opencv-4.10.0-debian-x64.tar.gz
+    mv opencv-4.10.0-debian-x64/opencv ./opencv
+    rm -rf opencv-4.10.0-debian-x64 opencv-4.10.0-debian-x64.tar.gz
+
 ```
 
-*💡 **Note**: For Red Hat or macOS environments, simply swap the URL with the `redhat-x64.tar.gz` or `macos-arm64.tar.gz` asset respectively.*
+*💡 **Note**: For Red Hat or macOS environments, simply swap the URL and folder names with the `redhat-x64.tar.gz` or `macos-arm64.tar.gz` asset respectively.*
 
 ### 🪟 Windows (PowerShell)
 
@@ -51,9 +52,13 @@ Easily integrate these binaries into your GitHub Actions (or any other CI provid
   shell: pwsh
   run: |
     New-Item -ItemType Directory -Force -Path "library"
+    cd library
     Invoke-WebRequest -Uri "https://github.com/mh-bagheri/opencv-prebuilt/releases/download/v4.10.0/opencv-4.10.0-windows-x64.zip" -OutFile "opencv.zip"
-    Expand-Archive -Path "opencv.zip" -DestinationPath "library"
+    Expand-Archive -Path "opencv.zip" -DestinationPath "." -Force
+    Move-Item -Path "opencv-4.10.0-windows-x64\opencv" -Destination "." -Force
+    Remove-Item -Path "opencv-4.10.0-windows-x64" -Recurse -Force
     Remove-Item -Path "opencv.zip"
+
 ```
 
 ---
@@ -63,15 +68,36 @@ Easily integrate these binaries into your GitHub Actions (or any other CI provid
 Once downloaded and extracted in your CI pipeline, you can easily point CMake to the prebuilt binaries. Just pass the path to the extracted OpenCV directory as `OpenCV_DIR` when configuring your project, or set it directly in your `CMakeLists.txt`:
 
 ```cmake
-# 1. Point CMake to the downloaded library directory
-set(OpenCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/library/opencv/build")
+# 1. Point CMake to the local extracted OpenCV directory
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/library/opencv")
+    list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/library/opencv")
+endif()
 
-# 2. Find the package
+# 2. Find and Link the Package
 find_package(OpenCV REQUIRED)
-
-# 3. Link against your executable
 add_executable(MyAwesomeApp main.cpp)
+target_include_directories(MyAwesomeApp PRIVATE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(MyAwesomeApp PRIVATE ${OpenCV_LIBS})
-```
 
-*💡 **Note**: The exact path to the `build` directory or `OpenCVConfig.cmake` file may vary slightly depending on the OS archive structure. Adjust the `OpenCV_DIR` path accordingly.*
+# 3. Post-Build: Automatically Copy Dynamic Libraries to Output Directory
+if(WIN32)
+    # Windows dynamic libraries are located in the /bin directory
+    file(GLOB_RECURSE OPENCV_RUNTIME_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/library/opencv/bin/*opencv_*.dll")
+elseif(APPLE)
+    # macOS dynamic libraries are located in the /lib directory
+    file(GLOB_RECURSE OPENCV_RUNTIME_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/library/opencv/lib/libopencv*.dylib")
+else()
+    # Linux shared objects are located in the /lib directory
+    file(GLOB_RECURSE OPENCV_RUNTIME_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/library/opencv/lib/libopencv*.so*")
+endif()
+
+if(OPENCV_RUNTIME_LIBS)
+    foreach(OPENCV_LIB ${OPENCV_RUNTIME_LIBS})
+        add_custom_command(TARGET MyAwesomeApp POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${OPENCV_LIB}"
+            $<TARGET_FILE_DIR:MyAwesomeApp>/
+        )
+    endforeach()
+endif()
+```
